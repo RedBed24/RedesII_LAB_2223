@@ -8,13 +8,21 @@ sock = socket(AF_INET, SOCK_DGRAM)
 #  cualquier IP, puerto
 sock.bind(('', 12345))
 
-# recibimos el mensaje y el cliente
-# como mucho, recibimos 1024 Bytes
-msg, client = sock.recvfrom(1024)
+while (True):
+    # recibimos el mensaje y el cliente
+    # como mucho, recibimos 1024 Bytes
+    response, client = sock.recvfrom(1024)
+    print(client, '>', response.decode())
 
-sock.sendto("respuesta".encode(), client)
+    if response.decode() == "bye":
+        break
 
-print(msg.decode(), client)
+    msgSend = input()
+
+    sock.sendto(msgSend.encode(), client)
+
+    if msgSend == "bye":
+        break
 
 sock.close()
 

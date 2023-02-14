@@ -6,14 +6,21 @@ sock = socket(AF_INET, SOCK_DGRAM)
 
 server = ('localhost', 12345)
 
-#            Mensaje codifi    tupla (addr, puerto)
-sock.sendto("hello".encode(), server)
+while(True):
+    msgSend = input()
 
-msg, server2 = sock.recvfrom(1024)
+    #            Mensaje codifi    tupla (addr, puerto)
+    sock.sendto(msgSend.encode(), server)
 
-# server2 == server
+    if msgSend == "bye":
+        break
 
-print(msg.decode())
+    # server2 == server
+    response, server2 = sock.recvfrom(1024)
+    print(server2, '>', response.decode())
+
+    if response.decode() == "bye":
+        break
 
 sock.close()
 
