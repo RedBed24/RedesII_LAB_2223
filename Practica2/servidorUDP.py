@@ -12,6 +12,8 @@ sock.bind(('', 12345))
 # como mucho, recibimos 1024 Bytes
 msg, client = sock.recvfrom(1024)
 
+sock.sendto("respuesta".encode(), client)
+
 print(msg.decode(), client)
 
 sock.close()
