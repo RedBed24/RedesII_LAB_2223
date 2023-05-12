@@ -1,134 +1,200 @@
 #!/usr/bin/python3
 
+"""Yicana"""
+__author__ = "Samuel Espejo"
+
+
 import socket
 import os
 
-DEFAULT_PACKET_SIZE = 1024
 
-with socket.socket() as socketRawHito0:
-	# nos conectamos con la yinkana
-	socketRawHito0.connect(("yinkana", 2000))
+# Define some "constants"
 
-	# recibimos lo que nos envíe
-	msg = socketRawHito0.recv(DEFAULT_PACKET_SIZE)
+DEFAULT_PACKET_SIZE : int = 1024
 
-	# vemos qué nos ha enviado
-	#print(f"{msg.decode()}")
+VERBOSE : bool = True
+DEBUG : bool = False
 
-	# Aquí entre medias habrá que hacer el código
 
-	# le enviamos lo que nos pide, nuestro nombre de usuario
-	socketRawHito0.send(os.environ["USER"].encode())
+def ObtainIdentifier(msg : bytes) -> bytes:
+	"""
+	Helper function that obtains the identifier of the message. 
 
-	# obtenemos las instrucciones de la siguiente
-	msg = socketRawHito0.recv(DEFAULT_PACKET_SIZE)
+	Parameters:
+		msg: Must be like: .*:.*$.* The first instance of this pattern will be the identifier
 
-	#print(f"{msg.decode()}")
+	Returns: The first instance of the bytes in between the : and $ of the search pattern
+	"""
+	return msg.split(b"\n")[0].split(b":")[1] 
 
-# Hito 1
+def Hito0(connection_tuple : tuple[str, int], username : str) -> bytes:
+	"""
+	Sends the username to the connection_tuple and returns the response.
 
-# Esto pasa a str
-respuesta = msg.decode()
-# Obtenemos el campo de identificador, primera línea, después de los dos puntos
-identifier = respuesta.split("\n")[0].split(":")[1]
+	Parameters:
+		connection_tuple: The Address and port specifiying where to connect the socket
+		username: Username that will be sent
+		
 
-puerto = 25565
+	Returns: The message returned by the connection_tuple. It should contain the identifier and instructions for the next Hito
+	"""
+	
+	with socket.socket() as socketRawHito0:
+		socketRawHito0.connect(connection_tuple)
 
-mensajeAEnviar = f"{puerto} {identifier}".encode()
-identificadorUpper = identifier.upper().encode()
+		msg = socketRawHito0.recv(DEFAULT_PACKET_SIZE)
 
-with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as servidorUDP:
-	servidorUDP.bind(("", puerto))
+		if VERBOSE: print(f"[Hito0] INFO:\n{msg.decode()}"); print(f"[Hito0] INFO: {username = }")
 
-	servidorUDP.sendto(mensajeAEnviar, ("yinkana", 4000))
+		socketRawHito0.send(username.encode())
 
-	msg, sender = servidorUDP.recvfrom(DEFAULT_PACKET_SIZE)
-	print(f"{msg.decode()}")
+		msg = socketRawHito0.recv(DEFAULT_PACKET_SIZE)
 
-	if msg == b"upper-code?":
+	return msg
 
-		servidorUDP.sendto(identificadorUpper, sender)
+def Hito1(connection_tuple : tuple[str, int], identifier : bytes, port : int) -> bytes:
+	"""
+	Binds to the specified port
+	Sends an UDP message with the specified port and identifier to the connection_tuple
+	Waits for any message, and if it was a query for the identifier in capitals
+		Sends the identifier in capitals to the sender of the recieved message
+	Returns the last message read from the socket. It should contain the identifier and instructions for the next Hito
+	"""
 
-		msg = servidorUDP.recv(DEFAULT_PACKET_SIZE)
-		#print(f"{msg.decode()}")
+	mensaje : bytes = f"{port} ".encode() + identifier
 
-# Hito 2
+	with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as servidorUDP:
+		servidorUDP.bind(("", port))
 
-def obtenerCuentaPalabras(TCPsocket, maximum, wordSeparators):
-	"""Devuelve bytes que contienen la cuenta de los caracteres de las palabras (separadas por alguno de los caracteres especificados en) que se obtienen del socket, que debe de estar previamente conectado"""
+		if VERBOSE: print(f"[Hito1] INFO: {mensaje = }")
 
-	suma = 0
-	bytesCuentas = b""
+		servidorUDP.sendto(mensaje, connection_tuple)
 
-	carateresEnEstaPalabra = 0
+		msg, sender = servidorUDP.recvfrom(DEFAULT_PACKET_SIZE)
+
+		if VERBOSE: print(f"[Hito1] INFO:\n{msg.decode()}"); print(f"[Hito1] INFO: {sender = }")
+
+		if msg == b"upper-code?":
+
+			if VERBOSE: print(f"[Hito1] INFO: {identifier.upper() = }")
+
+			servidorUDP.sendto(identifier.upper(), sender)
+
+			msg = servidorUDP.recv(DEFAULT_PACKET_SIZE)
+
+	return msg
+
+def obtainWordCount(TCPsocket : socket.socket, maximum : int, word_separators) -> bytes:
+	"""
+	Devuelve bytes que contienen la cuenta de los caracteres de las palabras (separadas por alguno de los caracteres especificados en) que se obtienen del socket, que debe de estar previamente conectado
+	"""
+
+	suma : int = 0
+	count : bytes = b" "
+
+	chars_in_word : int = 0
 
 	# obtenemos el número ascii asociado a los diferentes separadores especificados
-	wordSeparators = [ord(i) for i in wordSeparators]
+	word_separators = [ord(i) for i in word_separators]
+
+	if DEBUG: print(f"[obtainWordCount] DEBUG: {word_separators = }")
 
 	while suma < maximum:
-		wordSequence = TCPsocket.recv(DEFAULT_PACKET_SIZE)
-		i = 0
-		while i < len(wordSequence) and suma < maximum:
-			if wordSequence[i] not in wordSeparators:
-				carateresEnEstaPalabra += 1
+		word_sequence = TCPsocket.recv(DEFAULT_PACKET_SIZE)
+		byte : int = 0
+
+		if DEBUG: print(f"[obtainWordCount] DEBUG: Received a new message:\n{word_sequence.decode()}")
+
+		while byte < len(word_sequence) and suma < maximum:
+			if word_sequence[byte] not in word_separators:
+				chars_in_word += 1
 			else:
-				suma += carateresEnEstaPalabra
-				bytesCuentas += f"{carateresEnEstaPalabra} ".encode()
-				carateresEnEstaPalabra = 0
-			i += 1
+				suma += chars_in_word
+				count += f"{chars_in_word} ".encode()
+
+				if DEBUG: print(f"[obtainWordCount] DEBUG: word at {byte = } ended with {chars_in_word = }. {maximum - suma} chars remain.")
+
+				chars_in_word = 0
+			byte += 1
 	
-	return bytesCuentas
+	return count
 
-
-identifier = msg.decode().split("\n")[0].split(":")[1]
-
-with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as servidorTCPHito2:
-	servidorTCPHito2.connect(("node1", 3010))
-
-	bytesCuentas = obtenerCuentaPalabras(servidorTCPHito2, 1000, [" "])
-
-	servidorTCPHito2.send(f"{identifier} {bytesCuentas.decode()}--".encode())
-
-	# obtenemos el último mensaje enviado con datos, el cual se espera que sea el enunciado
-	msg = servidorTCPHito2.recv(DEFAULT_PACKET_SIZE)
+def obtainLastMessage(socket : socket.socket) -> bytes:
+	previous = msg = socket.recv(DEFAULT_PACKET_SIZE)
 	while len(msg) > 0:
+
+		if DEBUG: print(f"[obtainLastMessage] DEBUG: Received a new message:\n{msg = }")
+
 		previous = msg
-		msg = servidorTCPHito2.recv(DEFAULT_PACKET_SIZE)
+		msg = socket.recv(DEFAULT_PACKET_SIZE)
 
-	print(f"{previous.decode()}")
-	
-# Hito 3
+	return previous
 
-identifier = previous.decode().split("\n")[0].split(":")[1]
+def Hito2(connection_tuple : tuple[str, int], identifier : bytes, maximum : int, word_separators) -> bytes:
 
-with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as servidorTCPHito3:
-	servidorTCPHito3.connect(("node1", 5501))
+	mensaje : bytes = identifier
 
-	sumaMaxima = 1200
-	suma = 0
-	palabra = None
-	while suma < sumaMaxima and palabra == None:
-		msg = servidorTCPHito3.recv(DEFAULT_PACKET_SIZE)
+	with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as servidorTCPHito2:
+		servidorTCPHito2.connect(connection_tuple)
 
-		divisiones = msg.decode().split(" ")
+		mensaje += obtainWordCount(servidorTCPHito2, maximum, word_separators) + b"--"
 
-		for token in divisiones:
-			try:
-				suma +=	int(token)
-			except ValueError as ve:
-				suma += 1
-				if suma > sumaMaxima:
-					palabra = token
-					break
+		if VERBOSE: print(f"[Hito2] INFO: {mensaje = }")
 
-	servidorTCPHito3.send(f"{palabra} {identifier}".encode())
+		servidorTCPHito2.send(mensaje)
 
-	msg = servidorTCPHito3.recv(DEFAULT_PACKET_SIZE)
-	while len(msg) > 0:
-		previous = msg
-		msg = servidorTCPHito3.recv(DEFAULT_PACKET_SIZE)
+		msg = obtainLastMessage(servidorTCPHito2)
 
-	print(f"{previous.decode()}")
+	return msg
 
-# Hito 4
+def Hito3(connection_tuple : tuple[str, int], identifier : bytes, maximum : int) -> bytes:
+
+	with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as servidorTCPHito3:
+		servidorTCPHito3.connect(connection_tuple)
+
+		sumaMaxima = maximum
+		suma = 0
+		palabra = None
+		while suma < sumaMaxima and palabra == None:
+			msg = servidorTCPHito3.recv(DEFAULT_PACKET_SIZE)
+
+			divisiones = msg.decode().split(" ")
+
+			for token in divisiones:
+				try:
+					suma +=	int(token)
+				except ValueError as ve:
+					suma += 1
+					if suma > sumaMaxima:
+						palabra = token
+						break
+
+		servidorTCPHito3.send(f"{palabra} {identifier}".encode())
+
+		msg = obtainLastMessage(servidorTCPHito3)
+
+	return msg
+
+
+# main function, calls all Hito functions in order providing the necessary parameters
+if __name__ == "__main__":
+	try:
+		msg = Hito0(("yinkana", 2000), os.environ["USER"])
+
+		print(f"[main] INFO: Hito0:\n{msg.decode()}")
+
+		msg = Hito1(("node1", 4000), ObtainIdentifier(msg), 25565)
+
+		print(f"[main] INFO: Hito1:\n{msg.decode()}")
+
+		msg = Hito2(("node1", 3010), ObtainIdentifier(msg), 1000, [" ", "\t", "\n"])
+
+		print(f"[main] INFO: Hito2:\n{msg.decode()}")
+
+		msg = Hito3(("node1", 5501), ObtainIdentifier(msg), 1200)
+
+		print(f"[main] INFO: Hito3:\n{msg.decode()}")
+		...
+	except Exception as e:
+		print(f"[main] FATAL: {e}")
 
