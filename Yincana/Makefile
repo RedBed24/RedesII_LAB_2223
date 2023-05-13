@@ -18,3 +18,6 @@ execute: $(IDENTITYFILE)
 connect: $(IDENTITYFILE)
 	ssh -p $(PORT) -i $(IDENTITYFILE) $(USER)@$(HOSTNAME)
 
+clean:
+	rm -rf *~
+
