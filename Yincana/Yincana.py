@@ -179,6 +179,8 @@ def Hito3(connection_tuple : tuple[str, int], identifier : bytes, maximum : int)
 # main function, calls all Hito functions in order providing the necessary parameters
 if __name__ == "__main__":
 	try:
+		print(f"[main] INFO: Starting {__file__} as {os.environ['USER']}.")
+
 		msg = Hito0(("yinkana", 2000), os.environ["USER"])
 
 		print(f"[main] INFO: Hito0:\n{msg.decode()}")
