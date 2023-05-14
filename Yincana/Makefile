@@ -18,6 +18,12 @@ execute: $(IDENTITYFILE)
 connect: $(IDENTITYFILE)
 	ssh -p $(PORT) -i $(IDENTITYFILE) $(USER)@$(HOSTNAME)
 
+doc: $(FILENAME)
+	python3 -m pydoc Yincana
+
+debug: $(IDENTITYFILE)
+	ssh -p $(PORT) -i $(IDENTITYFILE) $(USER)@$(HOSTNAME) python3 -m pdb $(FILENAME)
+
 clean:
-	rm -rf *~
+	rm -rf *~ __pycache__/
 
