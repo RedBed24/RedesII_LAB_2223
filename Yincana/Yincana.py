@@ -185,15 +185,15 @@ if __name__ == "__main__":
 
 		print(f"[main] INFO: Hito0:\n{msg.decode()}")
 
-		msg = Hito1(("node1", 4000), ObtainIdentifier(msg), 25565)
+		msg = Hito1(("yinkana", 4000), ObtainIdentifier(msg), 25565)
 
 		print(f"[main] INFO: Hito1:\n{msg.decode()}")
 
-		msg = Hito2(("node1", 3010), ObtainIdentifier(msg), 1000, [" ", "\t", "\n"])
+		msg = Hito2(("yinkana", 3010), ObtainIdentifier(msg), 1000, [" ", "\t", "\n"])
 
 		print(f"[main] INFO: Hito2:\n{msg.decode()}")
 
-		msg = Hito3(("node1", 5501), ObtainIdentifier(msg), 1200)
+		msg = Hito3(("yinkana", 5501), ObtainIdentifier(msg), 1200)
 
 		print(f"[main] INFO: Hito3:\n{msg.decode()}")
 		...
