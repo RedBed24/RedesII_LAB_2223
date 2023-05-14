@@ -1,0 +1,7 @@
+# Ignore Vim backup files
+*~
+.*.swp
+
+# Ignore man pages for project's doc
+*/__pycache__/
+
