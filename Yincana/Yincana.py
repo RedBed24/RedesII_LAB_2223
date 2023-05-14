@@ -84,7 +84,7 @@ def Hito1(connection_tuple : tuple[str, int], identifier : bytes, port : int) ->
 
 	return msg
 
-def obtainWordCount(TCPsocket : socket.socket, maximum : int, word_separators) -> bytes:
+def ObtainWordCount(TCPsocket : socket.socket, maximum : int, word_separators) -> bytes:
 	"""
 	Devuelve bytes que contienen la cuenta de los caracteres de las palabras (separadas por alguno de los caracteres especificados en) que se obtienen del socket, que debe de estar previamente conectado
 	"""
@@ -97,13 +97,13 @@ def obtainWordCount(TCPsocket : socket.socket, maximum : int, word_separators) -
 	# obtenemos el número ascii asociado a los diferentes separadores especificados
 	word_separators = [ord(i) for i in word_separators]
 
-	if DEBUG: print(f"[obtainWordCount] DEBUG: {word_separators = }")
+	if DEBUG: print(f"[ObtainWordCount] DEBUG: {word_separators = }")
 
 	while suma < maximum:
 		word_sequence = TCPsocket.recv(DEFAULT_PACKET_SIZE)
 		byte : int = 0
 
-		if DEBUG: print(f"[obtainWordCount] DEBUG: Received a new message:\n{word_sequence.decode()}")
+		if DEBUG: print(f"[ObtainWordCount] DEBUG: Received a new message:\n{word_sequence.decode()}")
 
 		while byte < len(word_sequence) and suma < maximum:
 			if word_sequence[byte] not in word_separators:
@@ -112,18 +112,18 @@ def obtainWordCount(TCPsocket : socket.socket, maximum : int, word_separators) -
 				suma += chars_in_word
 				count += f"{chars_in_word} ".encode()
 
-				if DEBUG: print(f"[obtainWordCount] DEBUG: word at {byte = } ended with {chars_in_word = }. {maximum - suma} chars remain.")
+				if DEBUG: print(f"[ObtainWordCount] DEBUG: word at {byte = } ended with {chars_in_word = }. {maximum - suma} chars remain.")
 
 				chars_in_word = 0
 			byte += 1
 	
 	return count
 
-def obtainLastMessage(socket : socket.socket) -> bytes:
+def ObtainLastMessage(socket : socket.socket) -> bytes:
 	previous = msg = socket.recv(DEFAULT_PACKET_SIZE)
 	while len(msg) > 0:
 
-		if DEBUG: print(f"[obtainLastMessage] DEBUG: Received a new message:\n{msg = }")
+		if DEBUG: print(f"[ObtainLastMessage] DEBUG: Received a new message:\n{msg = }")
 
 		previous = msg
 		msg = socket.recv(DEFAULT_PACKET_SIZE)
@@ -137,13 +137,13 @@ def Hito2(connection_tuple : tuple[str, int], identifier : bytes, maximum : int,
 	with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as servidorTCPHito2:
 		servidorTCPHito2.connect(connection_tuple)
 
-		mensaje += obtainWordCount(servidorTCPHito2, maximum, word_separators) + b"--"
+		mensaje += ObtainWordCount(servidorTCPHito2, maximum, word_separators) + b"--"
 
 		if VERBOSE: print(f"[Hito2] INFO: {mensaje = }")
 
 		servidorTCPHito2.send(mensaje)
 
-		msg = obtainLastMessage(servidorTCPHito2)
+		msg = ObtainLastMessage(servidorTCPHito2)
 
 	return msg
 
@@ -171,7 +171,7 @@ def Hito3(connection_tuple : tuple[str, int], identifier : bytes, maximum : int)
 
 		servidorTCPHito3.send(f"{palabra} {identifier}".encode())
 
-		msg = obtainLastMessage(servidorTCPHito3)
+		msg = ObtainLastMessage(servidorTCPHito3)
 
 	return msg
 
