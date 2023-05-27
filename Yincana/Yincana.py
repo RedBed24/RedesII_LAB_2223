@@ -304,7 +304,7 @@ def Hito3(connection_tuple : tuple[str, int], identifier : bytes, maximum : int)
 # función main: llama a todos los hitos en orden con los parámetros necesarios
 if __name__ == "__main__":
 	try:
-		debug("main", "INFO", f"Starting {__file__} as {os.environ['USER']}.")
+		debug("main", "INFO+", f"Starting {__file__} as {os.environ['USER']}.")
 
 		msg = Hito0(("yinkana", 2000), os.environ["USER"])
 
