@@ -257,13 +257,14 @@ def ObtainWordAfterSum(TCPsocket : socket.socket, maximum : int) -> bytes:
 				# en cuyo caso, sumamos su valor
 				suma +=	int(token.decode())
 			except ValueError as ve:
-				# si es una palabra, sumamos 1
-				suma += 1
 				# comprobamos si ya hemos superado la suma
 				if suma > maximum:
 					# entonces esta es la palabra
 					palabra = token
 					break
+
+				# si es una palabra, sumamos 1
+				suma += 1
 
 		# obtenemos el último token para juntarlo con el siguiente mensaje
 		token = divisiones[-1]
