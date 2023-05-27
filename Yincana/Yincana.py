@@ -207,10 +207,12 @@ def ObtainWordAfterSum(TCPsocket : socket.socket, maximum : int) -> bytes:
 	while palabra == None:
 		msg = TCPsocket.recv(DEFAULT_PACKET_SIZE)
 
+		debug("ObtainWordAfterSum", "DEBUG", f"Received a new message:\n{msg.decode()}")
+
 		# juntamos el último token recibido con el mensaje ya que podríamos haber cortado por una palabra o número
 		divisiones = (token + msg).split(b" ")
 
-		for token in divisiones:
+		for token in divisiones[:-1]:
 			# intentamos obtener el valor
 			try:
 				# en cuyo caso, sumamos su valor
@@ -223,6 +225,9 @@ def ObtainWordAfterSum(TCPsocket : socket.socket, maximum : int) -> bytes:
 					# entonces esta es la palabra
 					palabra = token
 					break
+
+		# obtenemos el último token para juntarlo con el siguiente mensaje
+		token = divisiones[-1]
 	
 	return palabra
 
