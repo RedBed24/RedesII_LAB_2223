@@ -6,6 +6,7 @@ __author__ = "Samuel Espejo"
 
 import socket
 import os
+import hashlib
 
 
 # Definir algunas "constantes"
@@ -300,6 +301,83 @@ def Hito3(connection_tuple : tuple[str, int], identifier : bytes, maximum : int)
 
 	return msg
 
+def ObtainLengthFile(socketRAW : socket.socket) -> bytes:
+	"""
+	Divide el mensaje como se especifica, asegurando que no añadamos al fichero más de lo necesario
+	Mientras la longitud del fichero no sea la esperada
+		Leer tantos datos como queden o menos
+		Concatenar datos al fichero
+	Devolver el fichero
+
+	Parameters:
+		socketRAW: Socket abierto por el que se esperan los datos
+
+	Returns:
+		El fichero leído como bytes
+	"""
+
+	msg : bytes = socketRAW.recv(DEFAULT_PACKET_SIZE)
+
+	debug("ObtainLengthFile", "DEBUG", f"{len(msg) = }, {msg = }")
+
+	# Limitamos a 1 división
+	divisiones : [bytes] = msg.split(b":", 1)
+
+	longitud : int = int(divisiones[0].decode("ASCII"))
+
+	# Puede ser que ya hayamos leído todo lo necesario, de eso, sólo cogemos tantos bytes como la longitud nos indique
+	fichero : bytes = divisiones[1][0:longitud]
+
+	debug("ObtainLengthFile", "DEBUG", f"START: {longitud = }, {len(fichero) = }, {fichero = }")
+
+	while len(fichero) != longitud:
+		# recibimos sólo hasta lo que quede
+		fichero += socketRAW.recv(longitud - len(fichero))
+		debug("ObtainLengthFile", "DEBUG", f"READING: {len(fichero) = }")
+
+	debug("ObtainLengthFile", "DEBUG", f"EXIT: {longitud = }, {len(fichero) = }")
+
+	return fichero
+
+
+def Hito4(connection_tuple : tuple[str, int], identifier : bytes) -> bytes:
+	"""
+	Abre la conexión con la tupla dada
+	Manda el identificador
+	Obtiene el fichero provisto por la conexión
+	Calcula el MD5 del fichero
+	Obtiene los últimos mensajes de la conexión y los devuelve como uno
+
+	Parameters:
+		connection_tuple: Una tupla con la dirección y el puerto al que nos conectaremos
+		identifier: Bytes que representan el identificador obtenido de las instrucciones del hito
+
+	Returns:
+		Los últimos mensajes recibidos por el socket. Contiene el identificador y las instrucciones para el siguiente Hito
+	"""
+
+	# Qué hay que hacer con el identificador?
+	with socket.socket() as clienteRAWHito4:
+		clienteRAWHito4.connect(connection_tuple)
+
+		clienteRAWHito4.send(identifier)
+
+		fichero : bytes = ObtainLengthFile(clienteRAWHito4)
+
+		md5 = hashlib.md5()
+
+		md5.update(fichero)
+
+		digest = md5.digest()
+
+		debug("Hito4", "INFO+", f"{digest = }")
+
+		clienteRAWHito4.send(digest)
+
+		msg_list = ObtainAllMessages(clienteRAWHito4)
+
+	return msg_list[-2] + msg_list[-1]
+
 
 # función main: llama a todos los hitos en orden con los parámetros necesarios
 if __name__ == "__main__":
@@ -321,6 +399,11 @@ if __name__ == "__main__":
 		msg = Hito3(("yinkana", 5501), ObtainIdentifier(msg), 1200)
 
 		debug("main", "INFO", f"Hito4:\n{msg.decode()}")
+
+		msg = Hito4(("yinkana", 9000), ObtainIdentifier(msg))
+
+		debug("main", "INFO", f"Hito5:\n{msg.decode()}")
+
 		...
 	except Exception as e:
 		debug("main", "FATAL", f"Exception: {e}")
