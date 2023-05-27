@@ -172,16 +172,28 @@ def ObtainWordsLen(TCPsocket : socket.socket, maximum : int) -> bytes:
 	
 	return count
 
-def ObtainLastMessage(socket : socket.socket) -> bytes:
-	previous = msg = socket.recv(DEFAULT_PACKET_SIZE)
-	while len(msg) > 0:
+def ObtainAllMessages(socket : socket.socket) -> [bytes]:
+	"""
+	Recibe todos los mensajes hasta que se encuentra uno vacío y devuelve todos los leídos.
 
-		debug("ObtainLastMessage", "DEBUG", f"Received a new message:\n{msg = }")
+	Parameters:
+		socket: Socket previamente abierto que enviará los mensajes.
 
-		previous = msg
+	Returns:
+		Array conteniendo todos los mensajes.
+	"""
+
+	msg_list : [bytes] = []
+	msg = socket.recv(DEFAULT_PACKET_SIZE)
+
+	while msg:
+		debug("ObtainAllMessages", "DEBUG", f"Received a new message:\n{msg = }")
+
+		msg_list.append(msg)
+
 		msg = socket.recv(DEFAULT_PACKET_SIZE)
 
-	return previous
+	return msg_list
 
 def Hito2(connection_tuple : tuple[str, int], identifier : bytes, maximum : int) -> bytes:
 	"""
@@ -208,7 +220,7 @@ def Hito2(connection_tuple : tuple[str, int], identifier : bytes, maximum : int)
 
 		servidorTCPHito2.send(mensaje)
 
-		msg = ObtainLastMessage(servidorTCPHito2)
+		msg = ObtainAllMessages(servidorTCPHito2)[-1]
 
 	return msg
 
@@ -283,7 +295,7 @@ def Hito3(connection_tuple : tuple[str, int], identifier : bytes, maximum : int)
 
 		servidorTCPHito3.send(mensaje)
 
-		msg = ObtainLastMessage(servidorTCPHito3)
+		msg = ObtainAllMessages(servidorTCPHito3)[-1]
 
 	return msg
 
