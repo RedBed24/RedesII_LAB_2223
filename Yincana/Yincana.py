@@ -27,7 +27,7 @@ def debug(caller : str, debug_type : str, info : str) -> None:
 	DEBUG : bool = False
 	# Mustra la información con secuencias de color ANSI
 	USE_PRINT_COLORS : bool = True
-	
+
 	# Sólo muestra errores fatales, sobre escribe las anteriores
 	QUIET : bool = False
 
@@ -71,12 +71,12 @@ def Hito0(connection_tuple : tuple[str, int], username : str) -> bytes:
 	Parameters:
 		connection_tuple: Una tupla con la dirección y el puerto al que le enviaremos el nombre de usuario
 		username: El nombre de usuario que enviaremos
-		
+
 
 	Returns:
 		El mensaje de respuesta de connection_tuple. Contiene el identificador y las instrucciones para el siguiente Hito
 	"""
-	
+
 	with socket.socket() as socketRawHito0:
 		socketRawHito0.connect(connection_tuple)
 
@@ -169,7 +169,7 @@ def ObtainWordsLen(TCPsocket : socket.socket, maximum : int) -> bytes:
 
 		# obtenemos el último token para juntarlo con el siguiente mensaje
 		token = divisiones[-1]
-	
+
 	return count
 
 def ObtainAllMessages(socket : socket.socket) -> [bytes]:
@@ -267,7 +267,7 @@ def ObtainWordAfterSum(TCPsocket : socket.socket, maximum : int) -> bytes:
 
 		# obtenemos el último token para juntarlo con el siguiente mensaje
 		token = divisiones[-1]
-	
+
 	return palabra
 
 def Hito3(connection_tuple : tuple[str, int], identifier : bytes, maximum : int) -> bytes:
