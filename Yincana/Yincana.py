@@ -8,7 +8,7 @@ import socket
 import os
 
 
-# Define some "constants"
+# Definir algunas "constantes"
 
 DEFAULT_PACKET_SIZE : int = 1024
 
@@ -18,25 +18,25 @@ DEBUG : bool = False
 
 def ObtainIdentifier(msg : bytes) -> bytes:
 	"""
-	Helper function that obtains the identifier of the message. 
+	Función ayudante que devuelve el identificador encontrado en el mensaje
 
 	Parameters:
-		msg: Must be like: .*:.*$.* The first instance of this pattern will be the identifier
+		msg: Bytes que deben ser del estilo: b".*:.*\\n.*" La primera instancia del patrón contiene el identificador
 
-	Returns: The first instance of the bytes in between the : and $ of the search pattern
+	Returns: El identificador (en bytes), se encuentra entre b":" y b"\\n" del patrón encontrado
 	"""
 	return msg.split(b"\n")[0].split(b":")[1] 
 
 def Hito0(connection_tuple : tuple[str, int], username : str) -> bytes:
 	"""
-	Sends the username to the connection_tuple and returns the response.
+	Envía el nombre de usuario a la tupla de conexión y devuelve el mensaje recibido. Se usa un socket RAW
 
 	Parameters:
-		connection_tuple: The Address and port specifiying where to connect the socket
-		username: Username that will be sent
+		connection_tuple: Una tupla con la dirección y el puerto al que le enviaremos el nombre de usuario
+		username: El nombre de usuario que enviaremos
 		
 
-	Returns: The message returned by the connection_tuple. It should contain the identifier and instructions for the next Hito
+	Returns: El mensaje de respuesta de connection_tuple. Contiene el identificador y las instrucciones para el siguiente Hito
 	"""
 	
 	with socket.socket() as socketRawHito0:
@@ -54,11 +54,11 @@ def Hito0(connection_tuple : tuple[str, int], username : str) -> bytes:
 
 def Hito1(connection_tuple : tuple[str, int], identifier : bytes, port : int) -> bytes:
 	"""
-	Binds to the specified port
-	Sends an UDP message with the specified port and identifier to the connection_tuple
-	Waits for any message, and if it was a query for the identifier in capitals
-		Sends the identifier in capitals to the sender of the recieved message
-	Returns the last message read from the socket. It should contain the identifier and instructions for the next Hito
+	Se fija al puerto especificado
+	Envía un mensaje UDP a la tupla de conexión con el identificador y el puerto especificados
+	Intenta leer un mensaje, y si este requiere el identificador en mayúsculas
+		Envía el identificador en mayúsculas a quién envió el mensaje
+	Devuelve el último mensaje recibido a través del socket. Contiene el identificador y las instrucciones para el siguiente Hito
 	"""
 
 	mensaje : bytes = f"{port} ".encode() + identifier
@@ -176,7 +176,7 @@ def Hito3(connection_tuple : tuple[str, int], identifier : bytes, maximum : int)
 	return msg
 
 
-# main function, calls all Hito functions in order providing the necessary parameters
+# función main: llama a todos los hitos en orden con los parámetros necesarios
 if __name__ == "__main__":
 	try:
 		print(f"[main] INFO: Starting {__file__} as {os.environ['USER']}.")
