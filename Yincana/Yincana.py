@@ -77,17 +77,17 @@ def Hito0(connection_tuple : tuple[str, int], username : str) -> bytes:
 		El mensaje de respuesta de connection_tuple. Contiene el identificador y las instrucciones para el siguiente Hito
 	"""
 
-	with socket.socket() as socketRawHito0:
-		socketRawHito0.connect(connection_tuple)
+	with socket.socket() as clienteRAWHito0:
+		clienteRAWHito0.connect(connection_tuple)
 
-		msg = socketRawHito0.recv(DEFAULT_PACKET_SIZE)
+		msg = clienteRAWHito0.recv(DEFAULT_PACKET_SIZE)
 
 		debug("Hito0", "INFO", f"\n{msg.decode()}")
 		debug("Hito0", "INFO+", f"{username = }")
 
-		socketRawHito0.send(username.encode())
+		clienteRAWHito0.send(username.encode())
 
-		msg = socketRawHito0.recv(DEFAULT_PACKET_SIZE)
+		msg = clienteRAWHito0.recv(DEFAULT_PACKET_SIZE)
 
 	return msg
 
@@ -110,14 +110,14 @@ def Hito1(connection_tuple : tuple[str, int], identifier : bytes, port : int) ->
 
 	mensaje : bytes = f"{port} ".encode() + identifier
 
-	with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as servidorUDP:
-		servidorUDP.bind(("", port))
+	with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as servidorUPDHito1:
+		servidorUPDHito1.bind(("", port))
 
 		debug("Hito1", "INFO+", f"{mensaje = }")
 
-		servidorUDP.sendto(mensaje, connection_tuple)
+		servidorUPDHito1.sendto(mensaje, connection_tuple)
 
-		msg, sender = servidorUDP.recvfrom(DEFAULT_PACKET_SIZE)
+		msg, sender = servidorUPDHito1.recvfrom(DEFAULT_PACKET_SIZE)
 
 		debug("Hito1", "INFO+", f"\n{msg.decode()}")
 		debug("Hito1", "INFO+", f"{sender = }")
@@ -126,9 +126,9 @@ def Hito1(connection_tuple : tuple[str, int], identifier : bytes, port : int) ->
 
 			debug("Hito1", "INFO+", f"{identifier.upper() = }")
 
-			servidorUDP.sendto(identifier.upper(), sender)
+			servidorUPDHito1.sendto(identifier.upper(), sender)
 
-			msg = servidorUDP.recv(DEFAULT_PACKET_SIZE)
+			msg = servidorUPDHito1.recv(DEFAULT_PACKET_SIZE)
 
 	return msg
 
@@ -211,16 +211,16 @@ def Hito2(connection_tuple : tuple[str, int], identifier : bytes, maximum : int)
 		El último mensaje recibido por el socket. Contiene el identificador y las instrucciones para el siguiente Hito
 	"""
 
-	with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as servidorTCPHito2:
-		servidorTCPHito2.connect(connection_tuple)
+	with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as clienteTCPHito2:
+		clienteTCPHito2.connect(connection_tuple)
 
-		mensaje : bytes = identifier + ObtainWordsLen(servidorTCPHito2, maximum) + b"--"
+		mensaje : bytes = identifier + ObtainWordsLen(clienteTCPHito2, maximum) + b"--"
 
 		debug("Hito2", "INFO+", f"{mensaje = }")
 
-		servidorTCPHito2.send(mensaje)
+		clienteTCPHito2.send(mensaje)
 
-		msg = ObtainAllMessages(servidorTCPHito2)[-1]
+		msg = ObtainAllMessages(clienteTCPHito2)[-1]
 
 	return msg
 
@@ -286,16 +286,16 @@ def Hito3(connection_tuple : tuple[str, int], identifier : bytes, maximum : int)
 		El último mensaje recibido por el socket. Contiene el identificador y las instrucciones para el siguiente Hito
 	"""
 
-	with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as servidorTCPHito3:
-		servidorTCPHito3.connect(connection_tuple)
+	with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as clienteTCPHito3:
+		clienteTCPHito3.connect(connection_tuple)
 
-		mensaje : bytes = ObtainWordAfterSum(servidorTCPHito3, maximum) + b" " + identifier
+		mensaje : bytes = ObtainWordAfterSum(clienteTCPHito3, maximum) + b" " + identifier
 
 		debug("Hito3", "INFO+", f"{mensaje = }")
 
-		servidorTCPHito3.send(mensaje)
+		clienteTCPHito3.send(mensaje)
 
-		msg = ObtainAllMessages(servidorTCPHito3)[-1]
+		msg = ObtainAllMessages(clienteTCPHito3)[-1]
 
 	return msg
 
