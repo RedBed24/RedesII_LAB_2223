@@ -185,29 +185,57 @@ def Hito2(connection_tuple : tuple[str, int], identifier : bytes, maximum : int,
 
 	return msg
 
+def ObtainWordAfterSum(TCPsocket : socket.socket, maximum : int) -> bytes:
+	"""
+	Función que obtiene la siguiente palabra (aquello que no se puede convertir a número) que viene tras superar la suma
+
+	Parameters:
+		TCPsocket: Socket ya abierto que provee las palabras y números
+		maximum: Suma que queremos superar
+
+	Returns:
+		La palabra que se ha encontrado
+	"""
+
+	suma : int = 0
+	palabra : bytes = None
+
+	msg : bytes
+	divisiones : [bytes]
+	token : bytes = b""
+
+	while palabra == None:
+		msg = TCPsocket.recv(DEFAULT_PACKET_SIZE)
+
+		# juntamos el último token recibido con el mensaje ya que podríamos haber cortado por una palabra o número
+		divisiones = (token + msg).split(b" ")
+
+		for token in divisiones:
+			# intentamos obtener el valor
+			try:
+				# en cuyo caso, sumamos su valor
+				suma +=	int(token.decode())
+			except ValueError as ve:
+				# si es una palabra, sumamos 1
+				suma += 1
+				# comprobamos si ya hemos superado la suma
+				if suma > maximum:
+					# entonces esta es la palabra
+					palabra = token
+					break
+	
+	return palabra
+
 def Hito3(connection_tuple : tuple[str, int], identifier : bytes, maximum : int) -> bytes:
 
 	with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as servidorTCPHito3:
 		servidorTCPHito3.connect(connection_tuple)
 
-		sumaMaxima = maximum
-		suma = 0
-		palabra = None
-		while suma < sumaMaxima and palabra == None:
-			msg = servidorTCPHito3.recv(DEFAULT_PACKET_SIZE)
+		mensaje = ObtainWordAfterSum(servidorTCPHito3, maximum) + b" " + identifier
 
-			divisiones = msg.decode().split(" ")
+		debug("Hito3", "INFO+", f"{mensaje = }")
 
-			for token in divisiones:
-				try:
-					suma +=	int(token)
-				except ValueError as ve:
-					suma += 1
-					if suma > sumaMaxima:
-						palabra = token
-						break
-
-		servidorTCPHito3.send(f"{palabra} {identifier}".encode())
+		servidorTCPHito3.send(mensaje)
 
 		msg = ObtainLastMessage(servidorTCPHito3)
 
