@@ -59,7 +59,8 @@ def ObtainIdentifier(msg : bytes) -> bytes:
 	Parameters:
 		msg: Bytes que deben ser del estilo: b".*:.*\\n.*" La primera instancia del patrón contiene el identificador
 
-	Returns: El identificador (en bytes), se encuentra entre b":" y b"\\n" del patrón encontrado
+	Returns:
+		El identificador (en bytes), se encuentra entre b":" y b"\\n" del patrón encontrado
 	"""
 	return msg.split(b"\n")[0].split(b":")[1] 
 
@@ -72,7 +73,8 @@ def Hito0(connection_tuple : tuple[str, int], username : str) -> bytes:
 		username: El nombre de usuario que enviaremos
 		
 
-	Returns: El mensaje de respuesta de connection_tuple. Contiene el identificador y las instrucciones para el siguiente Hito
+	Returns:
+		El mensaje de respuesta de connection_tuple. Contiene el identificador y las instrucciones para el siguiente Hito
 	"""
 	
 	with socket.socket() as socketRawHito0:
@@ -95,7 +97,15 @@ def Hito1(connection_tuple : tuple[str, int], identifier : bytes, port : int) ->
 	Envía un mensaje UDP a la tupla de conexión con el identificador y el puerto especificados
 	Intenta leer un mensaje, y si este requiere el identificador en mayúsculas
 		Envía el identificador en mayúsculas a quién envió el mensaje
-	Devuelve el último mensaje recibido a través del socket. Contiene el identificador y las instrucciones para el siguiente Hito
+	Devuelve el último mensaje recibido a través del socket
+
+	Parameters:
+		connection_tuple: Una tupla con la dirección y el puerto con la que nos conectaremos
+		identifier: Bytes que representan el identificador obtenido de las instrucciones del hito
+		port: Puerto que usaremos para la conexión
+
+	Returns:
+		El mensaje recibido justamente después de contestar. Contiene el identificador y las instrucciones para el siguiente Hito
 	"""
 
 	mensaje : bytes = f"{port} ".encode() + identifier
@@ -124,7 +134,15 @@ def Hito1(connection_tuple : tuple[str, int], identifier : bytes, port : int) ->
 
 def ObtainWordsLen(TCPsocket : socket.socket, maximum : int) -> bytes:
 	"""
-	Devuelve bytes que contienen la cuenta de los caracteres de las palabras (separadas por alguno de los caracteres especificados en) que se obtienen del socket, que debe de estar previamente conectado
+	Crea un mensaje en bytes que cuenta cuántos bytes hay entre espacio y espacio poniendo estos valores en orden en el mensaje.
+	Cuando la suma sea mayor o igual que el máximo, parará.
+
+	Parameters: 
+		TCPsocket: Socket ya abierto que provee las palabras y números
+		maximum: Suma que queremos superar
+
+	Returns:
+		Mensaje creado con la longitud de cada palabra en orden
 	"""
 
 	suma : int = 0
@@ -166,6 +184,20 @@ def ObtainLastMessage(socket : socket.socket) -> bytes:
 	return previous
 
 def Hito2(connection_tuple : tuple[str, int], identifier : bytes, maximum : int) -> bytes:
+	"""
+	Abre la conexión con la tupla dada
+	Obtiene la longitud de las palabas que la conexión ofrece hasta el máximo especificado
+	Envía un mensaje con el identificador y todas las longitudes leídas
+	Obtiene el último mensaje de la conexión y lo devuelve
+
+	Parameters:
+		connection_tuple: Una tupla con la dirección y el puerto al que nos conectaremos
+		identifier: Bytes que representan el identificador obtenido de las instrucciones del hito
+		maximum: Suma máxima de longitudes de palabras
+
+	Returns:
+		El último mensaje recibido por el socket. Contiene el identificador y las instrucciones para el siguiente Hito
+	"""
 
 	with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as servidorTCPHito2:
 		servidorTCPHito2.connect(connection_tuple)
@@ -182,7 +214,7 @@ def Hito2(connection_tuple : tuple[str, int], identifier : bytes, maximum : int)
 
 def ObtainWordAfterSum(TCPsocket : socket.socket, maximum : int) -> bytes:
 	"""
-	Función que obtiene la siguiente palabra (aquello que no se puede convertir a número) que viene tras superar la suma
+	Función que obtiene la siguiente palabra (aquello que no se puede convertir a número) que viene tras superar la suma de la cuenta de palabras y los valores dados
 
 	Parameters:
 		TCPsocket: Socket ya abierto que provee las palabras y números
@@ -227,6 +259,20 @@ def ObtainWordAfterSum(TCPsocket : socket.socket, maximum : int) -> bytes:
 	return palabra
 
 def Hito3(connection_tuple : tuple[str, int], identifier : bytes, maximum : int) -> bytes:
+	"""
+	Abre la conexión con la tupla dada
+	Obtiene la primera palabra leída tras alcanzar el máximo
+	Envía un mensaje con el identificador y la palabra
+	Obtiene el último mensaje de la conexión y lo devuelve
+
+	Parameters:
+		connection_tuple: Una tupla con la dirección y el puerto al que nos conectaremos
+		identifier: Bytes que representan el identificador obtenido de las instrucciones del hito
+		maximum: Suma máxima del valor de los números y las palabras a leer
+
+	Returns:
+		El último mensaje recibido por el socket. Contiene el identificador y las instrucciones para el siguiente Hito
+	"""
 
 	with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as servidorTCPHito3:
 		servidorTCPHito3.connect(connection_tuple)
