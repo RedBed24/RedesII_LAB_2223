@@ -12,13 +12,49 @@ import os
 
 DEFAULT_PACKET_SIZE : int = 1024
 
-VERBOSE : bool = True
-DEBUG : bool = False
+def debug(caller : str, debug_type : str, info : str) -> None:
+	"""
+	Función ayudante para mostrar información durante la ejecución
+
+	Parameters:
+		caller: Función que ha llamadado a esta, para localizar la ejecución en el código
+		debug_type: Cualquiera de ["INFO", "INFO+", "DEBUG", "WARNING", "FATAL"], indica el tipo de información a mostrar
+		info: Información que será mostrada
+	"""
+	# Muestra más de la información típica
+	VERBOSE : bool = True
+	# Muestra mucha información
+	DEBUG : bool = False
+	# Mustra la información con secuencias de color ANSI
+	USE_PRINT_COLORS : bool = True
+	
+	# Sólo muestra errores fatales, sobre escribe las anteriores
+	QUIET : bool = False
+
+	msg : str = f"[{caller}] {debug_type}: {info}"
+
+	if debug_type == "INFO" and not QUIET:
+		print(msg)
+	elif debug_type == "INFO+" and VERBOSE and not QUIET:
+		print(msg)
+	elif debug_type == "DEBUG" and DEBUG and not QUIET:
+		print(msg)
+	elif debug_type == "WARNING" and not QUIET:
+		if USE_PRINT_COLORS:
+			print(f"\033[93m{msg}\033[0m")
+		else:
+			print(msg)
+	elif debug_type == "FATAL":
+		if USE_PRINT_COLORS:
+			print(f"\033[91m{msg}\033[0m")
+		else:
+			print(msg)
+
 
 
 def ObtainIdentifier(msg : bytes) -> bytes:
 	"""
-	Función ayudante que devuelve el identificador encontrado en el mensaje
+	Función que devuelve el identificador encontrado en el mensaje
 
 	Parameters:
 		msg: Bytes que deben ser del estilo: b".*:.*\\n.*" La primera instancia del patrón contiene el identificador
@@ -44,7 +80,8 @@ def Hito0(connection_tuple : tuple[str, int], username : str) -> bytes:
 
 		msg = socketRawHito0.recv(DEFAULT_PACKET_SIZE)
 
-		if VERBOSE: print(f"[Hito0] INFO:\n{msg.decode()}"); print(f"[Hito0] INFO: {username = }")
+		debug("Hito0", "INFO", f"\n{msg.decode()}")
+		debug("Hito0", "INFO+", f"{username = }")
 
 		socketRawHito0.send(username.encode())
 
@@ -66,17 +103,18 @@ def Hito1(connection_tuple : tuple[str, int], identifier : bytes, port : int) ->
 	with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as servidorUDP:
 		servidorUDP.bind(("", port))
 
-		if VERBOSE: print(f"[Hito1] INFO: {mensaje = }")
+		debug("Hito1", "INFO+", f"{mensaje = }")
 
 		servidorUDP.sendto(mensaje, connection_tuple)
 
 		msg, sender = servidorUDP.recvfrom(DEFAULT_PACKET_SIZE)
 
-		if VERBOSE: print(f"[Hito1] INFO:\n{msg.decode()}"); print(f"[Hito1] INFO: {sender = }")
+		debug("Hito1", "INFO+", f"\n{msg.decode()}")
+		debug("Hito1", "INFO+", f"{sender = }")
 
 		if msg == b"upper-code?":
 
-			if VERBOSE: print(f"[Hito1] INFO: {identifier.upper() = }")
+			debug("Hito1", "INFO+", f"{identifier.upper() = }")
 
 			servidorUDP.sendto(identifier.upper(), sender)
 
@@ -97,13 +135,13 @@ def ObtainWordCount(TCPsocket : socket.socket, maximum : int, word_separators) -
 	# obtenemos el número ascii asociado a los diferentes separadores especificados
 	word_separators = [ord(i) for i in word_separators]
 
-	if DEBUG: print(f"[ObtainWordCount] DEBUG: {word_separators = }")
+	debug("ObtainWordCount", "DEBUG", f"{word_separators = }")
 
 	while suma < maximum:
 		word_sequence = TCPsocket.recv(DEFAULT_PACKET_SIZE)
 		byte : int = 0
 
-		if DEBUG: print(f"[ObtainWordCount] DEBUG: Received a new message:\n{word_sequence.decode()}")
+		debug("ObtainWordCount", "DEBUG", f"Received a new message:\n{word_sequence.decode()}")
 
 		while byte < len(word_sequence) and suma < maximum:
 			if word_sequence[byte] not in word_separators:
@@ -112,7 +150,7 @@ def ObtainWordCount(TCPsocket : socket.socket, maximum : int, word_separators) -
 				suma += chars_in_word
 				count += f"{chars_in_word} ".encode()
 
-				if DEBUG: print(f"[ObtainWordCount] DEBUG: word at {byte = } ended with {chars_in_word = }. {maximum - suma} chars remain.")
+				debug("ObtainWordCount", "DEBUG", f"word at {byte = } ended with {chars_in_word = }. {maximum - suma} chars remain.")
 
 				chars_in_word = 0
 			byte += 1
@@ -123,7 +161,7 @@ def ObtainLastMessage(socket : socket.socket) -> bytes:
 	previous = msg = socket.recv(DEFAULT_PACKET_SIZE)
 	while len(msg) > 0:
 
-		if DEBUG: print(f"[ObtainLastMessage] DEBUG: Received a new message:\n{msg = }")
+		debug("ObtainLastMessage", "DEBUG", f"Received a new message:\n{msg = }")
 
 		previous = msg
 		msg = socket.recv(DEFAULT_PACKET_SIZE)
@@ -139,7 +177,7 @@ def Hito2(connection_tuple : tuple[str, int], identifier : bytes, maximum : int,
 
 		mensaje += ObtainWordCount(servidorTCPHito2, maximum, word_separators) + b"--"
 
-		if VERBOSE: print(f"[Hito2] INFO: {mensaje = }")
+		debug("Hito2", "INFO+", f"{mensaje = }")
 
 		servidorTCPHito2.send(mensaje)
 
@@ -179,24 +217,24 @@ def Hito3(connection_tuple : tuple[str, int], identifier : bytes, maximum : int)
 # función main: llama a todos los hitos en orden con los parámetros necesarios
 if __name__ == "__main__":
 	try:
-		print(f"[main] INFO: Starting {__file__} as {os.environ['USER']}.")
+		debug("main", "INFO", f"Starting {__file__} as {os.environ['USER']}.")
 
 		msg = Hito0(("yinkana", 2000), os.environ["USER"])
 
-		print(f"[main] INFO: Hito0:\n{msg.decode()}")
+		debug("main", "INFO", f"Hito1:\n{msg.decode()}")
 
 		msg = Hito1(("yinkana", 4000), ObtainIdentifier(msg), 25565)
 
-		print(f"[main] INFO: Hito1:\n{msg.decode()}")
+		debug("main", "INFO", f"Hito2:\n{msg.decode()}")
 
 		msg = Hito2(("yinkana", 3010), ObtainIdentifier(msg), 1000, [" ", "\t", "\n"])
 
-		print(f"[main] INFO: Hito2:\n{msg.decode()}")
+		debug("main", "INFO", f"Hito3:\n{msg.decode()}")
 
 		msg = Hito3(("yinkana", 5501), ObtainIdentifier(msg), 1200)
 
-		print(f"[main] INFO: Hito3:\n{msg.decode()}")
+		debug("main", "INFO", f"Hito4:\n{msg.decode()}")
 		...
 	except Exception as e:
-		print(f"[main] FATAL: {e}")
+		debug("main", "FATAL", f"Exception: {e}")
 
