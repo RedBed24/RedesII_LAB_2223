@@ -391,6 +391,37 @@ def Hito4(connection_tuple : tuple[str, int], identifier : bytes) -> bytes:
 
 	return msg_list[-2] + msg_list[-1]
 
+def Hito5(connection_tuple : tuple[str, int], identifier : bytes) -> bytes:
+
+	with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as clienteYAPoUDP:
+		# TODO: Use struct
+
+		#          YAP      TYPE          CODE      CKSUM         SEQUENCE
+		#          0:3      3:5           5:6       6:8           8:10
+		#   !               H             B         H             H
+		header = b"YAP" + b"\x00\x00" + b"\x00" + b"\x00\x00" + b"\x00\x01"
+
+		mensaje = header + base64.b64encode(identifier)
+
+		cks = cksum(mensaje)
+
+		mensaje = mensaje[:6] + struct.pack("!H", cks) + mensaje[8:]
+
+		debug("Hito5", "DEBUG", f"{mensaje = }")
+
+		clienteYAPoUDP.sendto(mensaje, connection_tuple)
+
+		msg = clienteYAPoUDP.recv(DEFAULT_PACKET_SIZE)
+
+		debug("Hito5", "DEBUG", f"{msg = }")
+
+		# Strip YAP header
+		msg = msg[10:]
+
+		# pad for b64 decoding
+		msg = msg + b"=" * (4 - len(msg) % 4)
+
+	return base64.b64decode(msg)
 
 # función main: llama a todos los hitos en orden con los parámetros necesarios
 if __name__ == "__main__":
@@ -416,6 +447,10 @@ if __name__ == "__main__":
 		msg = Hito4(("yinkana", 9000), ObtainIdentifier(msg))
 
 		debug("main", "INFO", f"Hito5:\n{msg.decode()}")
+
+		msg = Hito5(("yinkana", 6001), ObtainIdentifier(msg))
+
+		debug("main", "INFO", f"Hito6:\n{msg.decode()}")
 
 		...
 	except Exception as e:
