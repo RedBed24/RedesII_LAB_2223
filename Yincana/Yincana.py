@@ -86,7 +86,7 @@ def Hito0(connection_tuple : tuple[str, int], username : str) -> bytes:
 		debug("Hito0", "INFO", f"\n{msg.decode()}")
 		debug("Hito0", "INFO+", f"{username = }")
 
-		clienteRAWHito0.send(username.encode())
+		clienteRAWHito0.sendall(username.encode())
 
 		msg = clienteRAWHito0.recv(DEFAULT_PACKET_SIZE)
 
@@ -219,7 +219,7 @@ def Hito2(connection_tuple : tuple[str, int], identifier : bytes, maximum : int)
 
 		debug("Hito2", "INFO+", f"{mensaje = }")
 
-		clienteTCPHito2.send(mensaje)
+		clienteTCPHito2.sendall(mensaje)
 
 		msg = ObtainAllMessages(clienteTCPHito2)[-1]
 
@@ -295,7 +295,7 @@ def Hito3(connection_tuple : tuple[str, int], identifier : bytes, maximum : int)
 
 		debug("Hito3", "INFO+", f"{mensaje = }")
 
-		clienteTCPHito3.send(mensaje)
+		clienteTCPHito3.sendall(mensaje)
 
 		msg = ObtainAllMessages(clienteTCPHito3)[-1]
 
@@ -360,7 +360,7 @@ def Hito4(connection_tuple : tuple[str, int], identifier : bytes) -> bytes:
 	with socket.socket() as clienteRAWHito4:
 		clienteRAWHito4.connect(connection_tuple)
 
-		clienteRAWHito4.send(identifier)
+		clienteRAWHito4.sendall(identifier)
 
 		fichero : bytes = ObtainLengthFile(clienteRAWHito4)
 
