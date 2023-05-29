@@ -385,7 +385,7 @@ def Hito4(connection_tuple : tuple[str, int], identifier : bytes) -> bytes:
 
 		debug("Hito4", "INFO+", f"{digest = }")
 
-		clienteRAWHito4.send(digest)
+		clienteRAWHito4.sendall(digest)
 
 		msg_list = ObtainAllMessages(clienteRAWHito4)
 
