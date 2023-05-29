@@ -5,8 +5,22 @@ __author__ = "Samuel Espejo"
 
 
 import socket
+
+# Para obtener el usuario que está ejecutando el código
 import os
+
+# Cálculo de la suma md5 del fichero en el hito 4
 import hashlib
+
+# Empaquetar datos para las cabeceras de los hitos 5 y 6
+import struct
+
+# Codificar y decodificar payload del hito 5, YAP
+import base64
+
+
+# Función dada por los profesores para calcular el campo checksum del hito 5, YAP
+from inet_checksum import cksum
 
 
 # Definir algunas "constantes"
@@ -175,7 +189,7 @@ def ObtainWordsLen(TCPsocket : socket.socket, maximum : int) -> bytes:
 
 def ObtainAllMessages(socket : socket.socket) -> [bytes]:
 	"""
-	Recibe todos los mensajes hasta que se encuentra uno vacío y devuelve todos los leídos.
+	Recibe todos los mensajes hasta que se encuentra uno vacío, cuando el otro socket se ha cerrado, y devuelve todos los leídos.
 
 	Parameters:
 		socket: Socket previamente abierto que enviará los mensajes.
@@ -356,7 +370,6 @@ def Hito4(connection_tuple : tuple[str, int], identifier : bytes) -> bytes:
 		Los últimos mensajes recibidos por el socket. Contiene el identificador y las instrucciones para el siguiente Hito
 	"""
 
-	# Qué hay que hacer con el identificador?
 	with socket.socket() as clienteRAWHito4:
 		clienteRAWHito4.connect(connection_tuple)
 
