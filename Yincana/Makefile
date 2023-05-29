@@ -6,6 +6,8 @@ IDENTITYFILE := ~/.ssh/$(USER)
 # Nombre del archivo con el código
 FILENAME := Yincana.py
 
+DEPEND := inet_checksum.py
+
 # Ip del servidor de la yincana
 HOSTNAME := 161.22.47.12
 # Puerto del servidor de la yincana que admite conexiones ssh
@@ -18,6 +20,10 @@ all: send execute
 # envia el código al servidor, se pone en el directorio ~ del servidor
 send: $(FILENAME) $(IDENTITYFILE)
 	scp -P $(PORT) -i $(IDENTITYFILE) $(FILENAME) $(USER)@$(HOSTNAME):
+
+# envia el código de dependencias al servidor
+send_depend: $(DEPEND) $(IDENTITYFILE)
+	scp -P $(PORT) -i $(IDENTITYFILE) $(DEPEND) $(USER)@$(HOSTNAME):
 
 # ejecuta el fichero del código que se encuentra en el servidor de al yincana
 execute: $(IDENTITYFILE)
