@@ -393,44 +393,49 @@ def Hito4(connection_tuple : tuple[str, int], identifier : bytes) -> bytes:
 
 def Hito5(connection_tuple : tuple[str, int], identifier : bytes) -> bytes:
 
+	# Crear mensaje con checksum a 0 para calcular el checksum verdadero
+	header : bytes = struct.pack("!3sHBHH", b"YAP", 0, 0, 0, 1)
+	payload : bytes = base64.b64encode(identifier)
+
+	mensaje : bytes = header + payload
+
+	# Cálculo del checksum y actualización del campo
+	cks : int = cksum(mensaje)
+
+	header : bytes = struct.pack("!3sHBHH", b"YAP", 0, 0, cks, 1)
+	mensaje : bytes = header + payload
+
+	debug("Hito5", "DEBUG", f"{mensaje = }")
+
 	with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as clienteYAPoUDP:
-
-		# Crear mensaje con checksum a 0 para calcular el checksum verdadero
-		header : bytes = struct.pack("!3sHBHH", b"YAP", 0, 0, 0, 1)
-		payload : bytes = base64.b64encode(identifier)
-
-		mensaje : bytes = header + payload
-
-		# Cálculo del checksum y actualización del campo
-		cks : int = cksum(mensaje)
-
-		header : bytes = struct.pack("!3sHBHH", b"YAP", 0, 0, cks, 1)
-		mensaje : bytes = header + payload
-
-		debug("Hito5", "DEBUG", f"{mensaje = }")
 
 		clienteYAPoUDP.sendto(mensaje, connection_tuple)
 
 		msg : bytes = clienteYAPoUDP.recv(DEFAULT_PACKET_SIZE * 2)
 
-		debug("Hito5", "DEBUG", f"{msg = }")
+	debug("Hito5", "DEBUG", f"{msg = }")
 
-		# Desempaquetado del mensaje recibido
-		header : tuple = struct.unpack("!3sHBHH", msg[:10])
-		payload : bytes = msg[10:]
+	# Desempaquetado del mensaje recibido
+	header : tuple = struct.unpack("!3sHBHH", msg[:10])
+	payload : bytes = msg[10:]
 
-		# check errors
-		if header[1] != 1 or header[2] != 0:
-			debug("Hito5", "FATAL", "Unexpected YAP request or error code.")
-			return None
+	# check errors
+	if header[1] != 1 or header[2] != 0:
+		debug("Hito5", "FATAL", "Unexpected YAP request or error code.")
+		return None
 
-		cks : int = header[3]
-		header : bytes = struct.pack("!3sHBHH", header[0], header[1], header[2], 0, header[4])
-		msg : bytes = header + payload
+	cks : int = header[3]
+	header : bytes = struct.pack("!3sHBHH", header[0], header[1], header[2], 0, header[4])
+	msg : bytes = header + payload
 
-		if cks != cksum(msg):
-			debug("Hito5", "FATAL", "Wrong checksum")
-			return None
+	if cks != cksum(msg):
+		debug("Hito5", "FATAL", "Wrong checksum")
+		return None
+
+
+
+
+
 
 
 	return base64.b64decode(msg)
