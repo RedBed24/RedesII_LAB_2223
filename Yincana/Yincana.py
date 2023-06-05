@@ -539,7 +539,14 @@ if __name__ == "__main__":
 
 		debug("main", "INFO", f"Hito6:\n{msg.decode()}")
 
-		...
+		msg = Hito6(("yinkana", 8002), ObtainIdentifier(msg), 25565, 5, ("rick", 81))
+
+		debug("main", "INFO", f"Hito6:\n{msg.decode()}")
+
+		msg = Hito7(("yinkana", 33333), ObtainIdentifier(msg))
+
+		debug("main", "INFO", f"Hito7:\n{msg.decode()}")
+
 	except Exception as e:
 		debug("main", "FATAL", f"Exception: {e}")
 
