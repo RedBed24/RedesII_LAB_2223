@@ -32,6 +32,7 @@ from inet_checksum import cksum
 # Definir algunas "constantes"
 
 DEFAULT_PACKET_SIZE : int = 1024
+MAGIC_WORD : bytes = b"identifier"
 
 def debug(caller : str, debug_type : str, info : str) -> None:
 	"""
@@ -75,14 +76,17 @@ def debug(caller : str, debug_type : str, info : str) -> None:
 
 def ObtainIdentifier(msg : bytes) -> bytes:
 	"""
+	Si no se encuentra la palabra mágica al principio del mensaje, no se puede obtener el identificador
 	Función que devuelve el identificador encontrado en el mensaje
 
 	Parameters:
-		msg: Bytes que deben ser del estilo: b".*:.*\\n.*" La primera instancia del patrón contiene el identificador
+		msg: Bytes que deben ser del estilo: b"MAGIC_WORD:.*\\n.*" La primera instancia del patrón contiene el identificador
 
 	Returns:
 		El identificador (en bytes), se encuentra entre b":" y b"\\n" del patrón encontrado quitando los espacios
 	"""
+	if msg[:len(MAGIC_WORD)] != MAGIC_WORD:
+		raise Exception(f"msg does not start with {MAGIC_WORD = }")
 	return msg.split(b"\n")[0].split(b":")[1].strip()
 
 def Hito0(connection_tuple : tuple[str, int], username : str) -> bytes:
@@ -387,7 +391,7 @@ def Hito4(connection_tuple : tuple[str, int], identifier : bytes) -> bytes:
 
 		md5.update(fichero)
 
-		digest = md5.digest()
+		digest : bytes = md5.digest()
 
 		debug("Hito4", "INFO+", f"{digest = }")
 
@@ -398,6 +402,20 @@ def Hito4(connection_tuple : tuple[str, int], identifier : bytes) -> bytes:
 	return msg_list[-2] + msg_list[-1]
 
 def Hito5(connection_tuple : tuple[str, int], identifier : bytes) -> bytes:
+	"""
+	Empaqueta la cabecera con el checksum a 0 y codifica el payload
+	Junta el mensaje y calcula el checksum de este para asignarselo a la cabecera de verdad
+	Envía el mensaje a la tupla y espera un mensaje de vuelta
+	Lo desempaqueta y separa, comprobando que sea todo correcto
+	En cuyo caso devuelve el payload decodificado
+
+	Parameters:
+		connection_tuple: Una tupla con la dirección y el puerto al que enviaremos el mensaje YAP
+		identifier: Bytes que representan el identificador obtenido de las instrucciones del hito
+
+	Returns:
+		El payload decodificado del mensaje recibido. Contiene el identificador y las instrucciones para el siguiente Hito
+	"""
 
 	# Crear mensaje con checksum a 0 para calcular el checksum verdadero
 	header : bytes = struct.pack("!3sHBHH", b"YAP", 0, 0, 0, 1)
@@ -411,7 +429,7 @@ def Hito5(connection_tuple : tuple[str, int], identifier : bytes) -> bytes:
 	header : bytes = struct.pack("!3sHBHH", b"YAP", 0, 0, cks, 1)
 	mensaje : bytes = header + payload
 
-	debug("Hito5", "DEBUG", f"{mensaje = }")
+	debug("Hito5", "INFO+", f"{mensaje = }")
 
 	with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as clienteYAPoUDP:
 
@@ -441,6 +459,17 @@ def Hito5(connection_tuple : tuple[str, int], identifier : bytes) -> bytes:
 	return base64.b64decode(payload)
 
 def GET(request_socket : socket.socket, msg : bytes, provider : tuple[str, int]) -> None:
+	"""
+	Obtiene el fichero a enviar
+	Se lo pide al proveedor
+	Devuelve el fichero si se ha encontrado o una línea con el error
+	Cierra el socket
+
+	Parameters:
+		request_socket: Socket que pide el fichero
+		msg: Mensaje HTTP que ha enviado el request_socket socket con la petición GET del que se obtiene el fichero
+		provider: Tupla dirección puerto que identifica al proveedor de los ficheros a devolver
+	"""
 
 	file = msg.split(b" ")[1]
 
@@ -454,9 +483,26 @@ def GET(request_socket : socket.socket, msg : bytes, provider : tuple[str, int])
 
 	request_socket.close()
 
-def HTTP(TCPsocket : socket.socket, provider : tuple[str, int]) -> bytes:
+def HTTP(HTTPserver_socket : socket.socket, provider : tuple[str, int]) -> bytes:
+	"""
+	Siempre:
+		Acepta una nueva conexión
+		Recibe un mensaje de esta
+		Comprueba si es una petición GET
+			Dedica un hilo a tratar esta
+		En caso contrario
+			Devuelve el mensaje
+
+	Parameters:
+		HTTPserver_socket: Socket del servidor HTTP que está a la escucha de nuevas conexiones
+		provider: Tupla dirección puerto que identifica al proveedor de los ficheros a devolver
+
+	Returns:
+		El primer mensaje que no sea una petición GET. Este contiene una cabecera HTTP y en el payload, el identificador y las instrucciones para el siguiente Hito
+	"""
+
 	while True:
-		request_socket, peer = TCPsocket.accept()
+		request_socket, peer = HTTPserver_socket.accept()
 
 		msg = request_socket.recv(DEFAULT_PACKET_SIZE)
 		debug("HTTP", "DEBUG", f"{msg = }")
@@ -467,9 +513,19 @@ def HTTP(TCPsocket : socket.socket, provider : tuple[str, int]) -> bytes:
 			return msg
 
 def ErrorListening(connection_tuple : tuple[str, int], identifier : bytes, port : int) -> None:
+	"""
+	Crea el mensaje a enviar con el identificador y el puerto
+	Abre el socket cliente, se conecta a la tupla de conexión y envía el mensaje
+	Entra en bucle mientras el socket esté abierto
+		Recibe y muestra el mensaje
+
+	Parameters:
+		connection_tuple: Una tupla con la dirección y el puerto al que nos conectaremos
+		identifier: Bytes que representan el identificador obtenido de las instrucciones del hito
+	"""
 
 	mensaje : bytes = identifier + f" {port}".encode()
-	debug("ErrorListening", "DEBUG", f"{mensaje = }")
+	debug("ErrorListening", "INFO+", f"{mensaje = }")
 
 	with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as cliente_erroresTCP:
 
@@ -485,6 +541,22 @@ def ErrorListening(connection_tuple : tuple[str, int], identifier : bytes, port 
 			debug("ErrorListening", "WARNING", f"{msg = }")
 
 def Hito6(connection_tuple : tuple[str, int], identifier : bytes, port : int, max_connections : int, provider : tuple[str, int]) -> bytes:
+	"""
+	Abre el servidor HTTP conectandose al puerto dado y escucha la cantidad de conexiones dadas
+	Crea un hilo para la escucha de errores
+	Atiende a las peticiones HTTP
+	Busca y devuelve el payload del último mensaje HTTP
+
+	Parameters:
+		connection_tuple: Una tupla con la dirección y el puerto al que nos conectaremos
+		identifier: Bytes que representan el identificador obtenido de las instrucciones del hito
+		port: Puerto por el que escuchará el servidor
+		max_connections: Numero máximo de conexiones a atender a la vez
+		provider: Tupla dirección puerto que identifica al proveedor de los ficheros a devolver
+
+	Returns:
+		El payload del último mensaje HTTP, el identificador y las instrucciones para el siguiente Hito
+	"""
 
 	with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as servidorHTTP:
 
@@ -500,6 +572,18 @@ def Hito6(connection_tuple : tuple[str, int], identifier : bytes, port : int, ma
 	return msg[http_header_end + 4:]
 
 def Hito7(connection_tuple : tuple[str, int], identifier : bytes) -> bytes:
+	"""
+	Se conecta a la tupla de conexión
+	Envia el identificador
+	Espera un mensaje y lo devuelve
+
+	Parameters:
+		connection_tuple: Una tupla con la dirección y el puerto al que nos conectaremos
+		identifier: Bytes que representan el identificador obtenido de las instrucciones del hito
+
+	Returns:
+		Tarta :D
+	"""
 
 	with socket.socket() as clienteRAWHito7:
 		clienteRAWHito7.connect(connection_tuple)
