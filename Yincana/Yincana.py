@@ -81,9 +81,9 @@ def ObtainIdentifier(msg : bytes) -> bytes:
 		msg: Bytes que deben ser del estilo: b".*:.*\\n.*" La primera instancia del patrón contiene el identificador
 
 	Returns:
-		El identificador (en bytes), se encuentra entre b":" y b"\\n" del patrón encontrado
+		El identificador (en bytes), se encuentra entre b":" y b"\\n" del patrón encontrado quitando los espacios
 	"""
-	return msg.split(b"\n")[0].split(b":")[1] 
+	return msg.split(b"\n")[0].split(b":")[1].strip()
 
 def Hito0(connection_tuple : tuple[str, int], username : str) -> bytes:
 	"""
