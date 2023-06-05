@@ -18,6 +18,12 @@ import struct
 # Codificar y decodificar payload del hito 5, YAP
 import base64
 
+# Concurrencia para el hito 6
+import _thread
+
+# Para obtener los rfc
+import urllib.request
+
 
 # Función dada por los profesores para calcular el campo checksum del hito 5, YAP
 from inet_checksum import cksum
@@ -432,13 +438,77 @@ def Hito5(connection_tuple : tuple[str, int], identifier : bytes) -> bytes:
 		debug("Hito5", "FATAL", "Wrong checksum")
 		return None
 
+	return base64.b64decode(payload)
 
+def GET(request_socket : socket.socket, msg : bytes, provider : tuple[str, int]) -> None:
 
+	file = msg.split(b" ")[1]
 
+	with urllib.request.urlopen(f"http://{provider[0]}:{provider[1]}/rfc{file.decode()}") as response:
+		if response.status == 200:
+			debug("GET", "INFO+", f"{file = } sent")
+			request_socket.sendall(b"HTTP/1.1 200 OK\r\n\r\n" + response.read())
+		else:
+			debug("GET", "WARNING", f"{file = } not sent")
+			request_socket.sendall(b"HTTP/1.1 404 Not Found\r\n\r\n")
 
+	request_socket.close()
 
+def HTTP(TCPsocket : socket.socket, provider : tuple[str, int]) -> bytes:
+	while True:
+		request_socket, peer = TCPsocket.accept()
 
-	return base64.b64decode(msg)
+		msg = request_socket.recv(DEFAULT_PACKET_SIZE)
+		debug("HTTP", "DEBUG", f"{msg = }")
+
+		if msg[:3] == b"GET":
+			_thread.start_new_thread(GET, (request_socket, msg, provider))
+		else:
+			return msg
+
+def ErrorListening(connection_tuple : tuple[str, int], identifier : bytes, port : int) -> None:
+
+	mensaje : bytes = identifier + f" {port}".encode()
+	debug("ErrorListening", "DEBUG", f"{mensaje = }")
+
+	with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as cliente_erroresTCP:
+
+		cliente_erroresTCP.connect(connection_tuple)
+		cliente_erroresTCP.sendall(mensaje)
+
+		while True:
+			msg = cliente_erroresTCP.recv(DEFAULT_PACKET_SIZE)
+
+			if not msg:
+				break
+
+			debug("ErrorListening", "WARNING", f"{msg = }")
+
+def Hito6(connection_tuple : tuple[str, int], identifier : bytes, port : int, max_connections : int, provider : tuple[str, int]) -> bytes:
+
+	with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as servidorHTTP:
+
+		servidorHTTP.bind(("", port))
+		servidorHTTP.listen(max_connections)
+
+		_thread.start_new_thread(ErrorListening, (connection_tuple, identifier, port))
+
+		msg = HTTP(servidorHTTP, provider)
+
+	http_header_end = msg.find(b"\r\n\r\n")
+
+	return msg[http_header_end + 4:]
+
+def Hito7(connection_tuple : tuple[str, int], identifier : bytes) -> bytes:
+
+	with socket.socket() as clienteRAWHito7:
+		clienteRAWHito7.connect(connection_tuple)
+
+		clienteRAWHito7.sendall(identifier)
+
+		msg = clienteRAWHito7.recv(DEFAULT_PACKET_SIZE)
+
+	return msg
 
 # función main: llama a todos los hitos en orden con los parámetros necesarios
 if __name__ == "__main__":
