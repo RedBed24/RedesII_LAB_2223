@@ -24,6 +24,9 @@ import _thread
 # Para obtener los rfc
 import urllib.request
 
+# Muestra de mensajes
+import logging
+
 
 # Función dada por los profesores para calcular el campo checksum del hito 5, YAP
 from inet_checksum import cksum
@@ -33,45 +36,6 @@ from inet_checksum import cksum
 
 DEFAULT_PACKET_SIZE : int = 1024
 MAGIC_WORD : bytes = b"identifier"
-
-def debug(caller : str, debug_type : str, info : str) -> None:
-	"""
-	Función ayudante para mostrar información durante la ejecución
-
-	Parameters:
-		caller: Función que ha llamadado a esta, para localizar la ejecución en el código
-		debug_type: Cualquiera de ["INFO", "INFO+", "DEBUG", "WARNING", "FATAL"], indica el tipo de información a mostrar
-		info: Información que será mostrada
-	"""
-	# Muestra más de la información típica
-	VERBOSE : bool = True
-	# Muestra mucha información
-	DEBUG : bool = False
-	# Mustra la información con secuencias de color ANSI
-	USE_PRINT_COLORS : bool = True
-
-	# Sólo muestra errores fatales, sobre escribe las anteriores
-	QUIET : bool = False
-
-	msg : str = f"[{caller}] {debug_type}: {info}"
-
-	if debug_type == "INFO" and not QUIET:
-		print(msg)
-	elif debug_type == "INFO+" and VERBOSE and not QUIET:
-		print(msg)
-	elif debug_type == "DEBUG" and DEBUG and not QUIET:
-		print(msg)
-	elif debug_type == "WARNING" and not QUIET:
-		if USE_PRINT_COLORS:
-			print(f"\033[93m{msg}\033[0m")
-		else:
-			print(msg)
-	elif debug_type == "FATAL":
-		if USE_PRINT_COLORS:
-			print(f"\033[91m{msg}\033[0m")
-		else:
-			print(msg)
-
 
 
 def ObtainIdentifier(msg : bytes) -> bytes:
@@ -97,7 +61,6 @@ def Hito0(connection_tuple : tuple[str, int], username : str) -> bytes:
 		connection_tuple: Una tupla con la dirección y el puerto al que le enviaremos el nombre de usuario
 		username: El nombre de usuario que enviaremos
 
-
 	Returns:
 		El mensaje de respuesta de connection_tuple. Contiene el identificador y las instrucciones para el siguiente Hito
 	"""
@@ -107,8 +70,7 @@ def Hito0(connection_tuple : tuple[str, int], username : str) -> bytes:
 
 		msg = clienteRAWHito0.recv(DEFAULT_PACKET_SIZE)
 
-		debug("Hito0", "INFO", f"\n{msg.decode()}")
-		debug("Hito0", "INFO+", f"{username = }")
+		logging.info(f"Hito0:\n{msg.decode()}")
 
 		clienteRAWHito0.sendall(username.encode())
 
@@ -138,18 +100,15 @@ def Hito1(connection_tuple : tuple[str, int], identifier : bytes, port : int) ->
 	with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as servidorUPDHito1:
 		servidorUPDHito1.bind(("", port))
 
-		debug("Hito1", "INFO+", f"{mensaje = }")
-
 		servidorUPDHito1.sendto(mensaje, connection_tuple)
 
 		msg, sender = servidorUPDHito1.recvfrom(DEFAULT_PACKET_SIZE)
 
-		debug("Hito1", "INFO+", f"\n{msg.decode()}")
-		debug("Hito1", "INFO+", f"{sender = }")
+		logging.debug(f"Hito1: \n{msg.decode()}")
 
 		if msg == b"upper-code?":
 
-			debug("Hito1", "INFO+", f"{identifier.upper() = }")
+			logging.debug(f"Hito1: sending {identifier.upper()} to {sender}")
 
 			servidorUPDHito1.sendto(identifier.upper(), sender)
 
@@ -180,7 +139,7 @@ def ObtainWordsLen(TCPsocket : socket.socket, maximum : int) -> bytes:
 	while suma < maximum:
 		msg = TCPsocket.recv(DEFAULT_PACKET_SIZE)
 
-		debug("ObtainWordsLen", "DEBUG", f"Received a new message:\n{msg.decode()}")
+		logging.debug(f"ObtainWordsLen: new message:\n{msg = }")
 
 		# juntamos el último token recibido con el mensaje ya que podríamos haber cortado por una palabra o número
 		divisiones = (token + msg).split(b" ")
@@ -212,7 +171,7 @@ def ObtainAllMessages(socket : socket.socket) -> [bytes]:
 	msg = socket.recv(DEFAULT_PACKET_SIZE)
 
 	while msg:
-		debug("ObtainAllMessages", "DEBUG", f"Received a new message:\n{msg = }")
+		logging.debug(f"ObtainAllMessages: new message:\n{msg = }")
 
 		msg_list.append(msg)
 
@@ -241,7 +200,7 @@ def Hito2(connection_tuple : tuple[str, int], identifier : bytes, maximum : int)
 
 		mensaje : bytes = identifier + ObtainWordsLen(clienteTCPHito2, maximum) + b"--"
 
-		debug("Hito2", "INFO+", f"{mensaje = }")
+		logging.info(f"Hito2: sending {mensaje = }")
 
 		clienteTCPHito2.sendall(mensaje)
 
@@ -271,7 +230,7 @@ def ObtainWordAfterSum(TCPsocket : socket.socket, maximum : int) -> bytes:
 	while palabra == None:
 		msg = TCPsocket.recv(DEFAULT_PACKET_SIZE)
 
-		debug("ObtainWordAfterSum", "DEBUG", f"Received a new message:\n{msg.decode()}")
+		logging.debug(f"ObtainWordAfterSum: new message:\n{msg = }")
 
 		# juntamos el último token recibido con el mensaje ya que podríamos haber cortado por una palabra o número
 		divisiones = (token + msg).split(b" ")
@@ -317,7 +276,7 @@ def Hito3(connection_tuple : tuple[str, int], identifier : bytes, maximum : int)
 
 		mensaje : bytes = ObtainWordAfterSum(clienteTCPHito3, maximum) + b" " + identifier
 
-		debug("Hito3", "INFO+", f"{mensaje = }")
+		logging.info(f"Hito3: sending {mensaje = }")
 
 		clienteTCPHito3.sendall(mensaje)
 
@@ -342,7 +301,7 @@ def ObtainLengthFile(socketRAW : socket.socket) -> bytes:
 
 	msg : bytes = socketRAW.recv(DEFAULT_PACKET_SIZE)
 
-	debug("ObtainLengthFile", "DEBUG", f"{len(msg) = }, {msg = }")
+	logging.debug(f"ObtainLengthFile: {len(msg) = }, {msg = }")
 
 	# Limitamos a 1 división
 	divisiones : [bytes] = msg.split(b":", 1)
@@ -352,14 +311,14 @@ def ObtainLengthFile(socketRAW : socket.socket) -> bytes:
 	# Puede ser que ya hayamos leído todo lo necesario, de eso, sólo cogemos tantos bytes como la longitud nos indique
 	fichero : bytes = divisiones[1][0:longitud]
 
-	debug("ObtainLengthFile", "DEBUG", f"START: {longitud = }, {len(fichero) = }, {fichero = }")
+	logging.debug(f"ObtainLengthFile: START: {longitud = }, {len(fichero) = }, {fichero = }")
 
 	while len(fichero) != longitud:
 		# recibimos sólo hasta lo que quede
 		fichero += socketRAW.recv(longitud - len(fichero))
-		debug("ObtainLengthFile", "DEBUG", f"READING: {len(fichero) = }")
+		logging.debug(f"ObtainLengthFile: READING: {len(fichero) = }")
 
-	debug("ObtainLengthFile", "DEBUG", f"EXIT: {longitud = }, {len(fichero) = }")
+	logging.debug(f"ObtainLengthFile: EXIT: {longitud = }, {len(fichero) = }")
 
 	return fichero
 
@@ -393,7 +352,7 @@ def Hito4(connection_tuple : tuple[str, int], identifier : bytes) -> bytes:
 
 		digest : bytes = md5.digest()
 
-		debug("Hito4", "INFO+", f"{digest = }")
+		logging.info(f"Hito4: sending {digest = }")
 
 		clienteRAWHito4.sendall(digest)
 
@@ -429,7 +388,7 @@ def Hito5(connection_tuple : tuple[str, int], identifier : bytes) -> bytes:
 	header : bytes = struct.pack("!3sHBHH", b"YAP", 0, 0, cks, 1)
 	mensaje : bytes = header + payload
 
-	debug("Hito5", "INFO+", f"{mensaje = }")
+	logging.info(f"Hito5: sending {mensaje = }")
 
 	with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as clienteYAPoUDP:
 
@@ -437,7 +396,7 @@ def Hito5(connection_tuple : tuple[str, int], identifier : bytes) -> bytes:
 
 		msg : bytes = clienteYAPoUDP.recv(DEFAULT_PACKET_SIZE * 2)
 
-	debug("Hito5", "DEBUG", f"{msg = }")
+	logging.debug(f"Hito5: {msg = }")
 
 	# Desempaquetado del mensaje recibido
 	header : tuple = struct.unpack("!3sHBHH", msg[:10])
@@ -445,16 +404,14 @@ def Hito5(connection_tuple : tuple[str, int], identifier : bytes) -> bytes:
 
 	# check errors
 	if header[1] != 1 or header[2] != 0:
-		debug("Hito5", "FATAL", "Unexpected YAP request or error code.")
-		return None
+		raise Exception("Unexpected YAP request or error code.")
 
 	cks : int = header[3]
 	header : bytes = struct.pack("!3sHBHH", header[0], header[1], header[2], 0, header[4])
 	msg : bytes = header + payload
 
 	if cks != cksum(msg):
-		debug("Hito5", "FATAL", "Wrong checksum")
-		return None
+		raise Exception("Wrong checksum")
 
 	return base64.b64decode(payload)
 
@@ -475,10 +432,10 @@ def GET(request_socket : socket.socket, msg : bytes, provider : tuple[str, int])
 
 	with urllib.request.urlopen(f"http://{provider[0]}:{provider[1]}/rfc{file.decode()}") as response:
 		if response.status == 200:
-			debug("GET", "INFO+", f"{file = } sent")
+			logging.debug(f"GET: sending {file = }")
 			request_socket.sendall(b"HTTP/1.1 200 OK\r\n\r\n" + response.read())
 		else:
-			debug("GET", "WARNING", f"{file = } not sent")
+			logging.debug(f"GET: {file = } not sent")
 			request_socket.sendall(b"HTTP/1.1 404 Not Found\r\n\r\n")
 
 	request_socket.close()
@@ -505,7 +462,7 @@ def HTTP(HTTPserver_socket : socket.socket, provider : tuple[str, int]) -> bytes
 		request_socket, peer = HTTPserver_socket.accept()
 
 		msg = request_socket.recv(DEFAULT_PACKET_SIZE)
-		debug("HTTP", "DEBUG", f"{msg = }")
+		logging.debug(f"HTTP: {msg = }")
 
 		if msg[:3] == b"GET":
 			_thread.start_new_thread(GET, (request_socket, msg, provider))
@@ -525,7 +482,7 @@ def ErrorListening(connection_tuple : tuple[str, int], identifier : bytes, port 
 	"""
 
 	mensaje : bytes = identifier + f" {port}".encode()
-	debug("ErrorListening", "INFO+", f"{mensaje = }")
+	logging.info(f"ErrorListening: sending {mensaje = }")
 
 	with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as cliente_erroresTCP:
 
@@ -538,7 +495,7 @@ def ErrorListening(connection_tuple : tuple[str, int], identifier : bytes, port 
 			if not msg:
 				break
 
-			debug("ErrorListening", "WARNING", f"{msg = }")
+			logging.warning(f"ErrorListening: {msg = }")
 
 def Hito6(connection_tuple : tuple[str, int], identifier : bytes, port : int, max_connections : int, provider : tuple[str, int]) -> bytes:
 	"""
@@ -597,40 +554,42 @@ def Hito7(connection_tuple : tuple[str, int], identifier : bytes) -> bytes:
 # función main: llama a todos los hitos en orden con los parámetros necesarios
 if __name__ == "__main__":
 	try:
-		debug("main", "INFO+", f"Starting {__file__} as {os.environ['USER']}.")
+		#logging.basicConfig(format='%(levelname)s: %(message)s', level=logging.DEBUG)
+
+		print(f"main: Starting {__file__} as {os.environ['USER']}.")
 
 		msg = Hito0(("yinkana", 2000), os.environ["USER"])
 
-		debug("main", "INFO", f"Hito1:\n{msg.decode()}")
+		print(f"main: Hito1:\n{msg.decode()}")
 
 		msg = Hito1(("yinkana", 4000), ObtainIdentifier(msg), 25565)
 
-		debug("main", "INFO", f"Hito2:\n{msg.decode()}")
+		print(f"main: Hito2:\n{msg.decode()}")
 
 		msg = Hito2(("yinkana", 3010), ObtainIdentifier(msg), 1000)
 
-		debug("main", "INFO", f"Hito3:\n{msg.decode()}")
+		print(f"main: Hito3:\n{msg.decode()}")
 
 		msg = Hito3(("yinkana", 5501), ObtainIdentifier(msg), 1200)
 
-		debug("main", "INFO", f"Hito4:\n{msg.decode()}")
+		print(f"main: Hito4:\n{msg.decode()}")
 
 		msg = Hito4(("yinkana", 9000), ObtainIdentifier(msg))
 
-		debug("main", "INFO", f"Hito5:\n{msg.decode()}")
+		print(f"main: Hito5:\n{msg.decode()}")
 
 		msg = Hito5(("yinkana", 6001), ObtainIdentifier(msg))
 
-		debug("main", "INFO", f"Hito6:\n{msg.decode()}")
+		print(f"main: Hito6:\n{msg.decode()}")
 
 		msg = Hito6(("yinkana", 8002), ObtainIdentifier(msg), 25565, 5, ("rick", 81))
 
-		debug("main", "INFO", f"Hito6:\n{msg.decode()}")
+		print(f"main: Hito6:\n{msg.decode()}")
 
 		msg = Hito7(("yinkana", 33333), ObtainIdentifier(msg))
 
-		debug("main", "INFO", f"Hito7:\n{msg.decode()}")
+		print(f"main: Hito7:\n{msg.decode()}")
 
 	except Exception as e:
-		debug("main", "FATAL", f"Exception: {e}")
+		logging.error(f"main: Exception: {e}")
 
