@@ -1,0 +1,32 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Run",
+            "type": "shell",
+            "command": "make",
+            "problemMatcher": [],
+            "group": "build",
+        },
+        {
+            "label": "Lint",
+            "type": "shell",
+            "command": "make",
+            "args": ["lint"],
+            "problemMatcher": []
+        },
+        {
+            "label": "Type Check",
+            "type": "shell",
+            "command": "make",
+            "args": ["type_check"],
+        },
+        {
+            "label": "Test",
+            "type": "shell",
+            "command": "make",
+            "args": ["mqtt"],
+            "problemMatcher": []
+        }
+    ]
+}
