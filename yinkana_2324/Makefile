@@ -10,37 +10,37 @@ MQTT_PORT := 1234
 
 SRC := yinkana_2324.py
 
-connect: config ${IDENTITYFILE}
-	ssh -F config yinkana
+all: send execute
 
-send: config ${IdentityFile} ${SRC}
-	scp -F config ${SRC} yinkana:
+send: $(SRC) $(IDENTITYFILE)
+	scp -P $(PORT) -i $(IDENTITYFILE) $(SRC) $(USER)@$(HOSTNAME):
 
-execute: send
-	ssh -F config yinkana ./${SRC}
+execute: $(IDENTITYFILE)
+	ssh -p $(PORT) -i $(IDENTITYFILE) $(USER)@$(HOSTNAME) ./$(SRC)
 
-config:
-	echo "Host yinkana" >> config
-	echo "	User ${USER}" >> config
-	echo "	HostName ${HOSTNAME}" >> config
-	echo "	Port ${PORT}" >> config
-	echo "	IdentityFile ${IDENTITYFILE}" >> config
+connect: $(IDENTITYFILE)
+	ssh -p $(PORT) -i $(IDENTITYFILE) $(USER)@$(HOSTNAME)
+
+doc: $(SRC)
+	python3 -m pydoc yinkaana
+
+debug: $(IDENTITYFILE)
+	ssh -p $(PORT) -i $(IDENTITYFILE) $(USER)@$(HOSTNAME) python3 -m pdb $(SRC)
 
 mqtt:
-	ssh -F config yinkana mosquitto_sub -h ${MQTT_HOST} -p ${MQTT_PORT} -u ${USER} -P ${MQTT_PASSWORD} -t ${MQTT_TOPIC}
+	ssh -p $(PORT) -i $(IDENTITYFILE) $(USER)@$(HOSTNAME) mosquitto_sub -h $(MQTT_HOST) -p $(MQTT_PORT) -u $(USER) -P $(MQTT_PASSWORD) -t $(MQTT_TOPIC)
 
 lint:
-	pylint ${SRC}
+	pylint $(SRC)
 
 type_check:
-	mypy ${SRC}
+	mypy $(SRC)
 
 format:
-	ruff ${SRC}
+	ruff $(SRC)
 
 clean:
-	rm *~
-	rm config
+	rm -rf *~ __pycache__/
 
 .PHONY: clean mqtt execute send connect
 
